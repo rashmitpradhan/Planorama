@@ -21,7 +21,7 @@ npm run preview
 
 1. Create a new site on Netlify and link this repo or drag-and-drop the folder.
 2. Ensure the build settings are:
-   - **Build command:** `npm ci && npm run build`
+   - **Build command:** `npm install && npm run build`
    - **Publish directory:** `dist`
 3. Deploy.
 
