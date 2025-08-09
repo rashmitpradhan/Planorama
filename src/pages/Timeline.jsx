@@ -1,47 +1,55 @@
-import React from 'react'
-import { Paper, Typography } from '@mui/material'
-import Gantt from 'frappe-gantt'
-import { loadData, updateTask } from '../utils/storage'
-import { format, parseISO } from 'date-fns'
+import React, { useMemo, useState } from 'react'
+import { Box, TextField, MenuItem, Typography } from '@mui/material'
+import { Gantt, ViewMode } from 'gantt-task-react'
+import 'gantt-task-react/dist/index.css'
+import dayjs from 'dayjs'
 
-export default function Timeline(){
-  const ref = React.useRef()
+export function TimelinePage({ state, saveState }) {
+  const [projectId, setProjectId] = useState(state.projects[0]?.id || '')
+  const project = useMemo(() => state.projects.find(p => p.id === projectId) || null, [state, projectId])
 
-  React.useEffect(()=> {
-    const data = loadData()
-    const tasks = (data.tasks || []).map(t => ({
-      id: t.id,
-      name: t.title,
-      start: t.startDate ? t.startDate : (t.dueDate? t.dueDate : new Date().toISOString().slice(0,10)),
-      end: t.dueDate ? t.dueDate : (t.startDate? t.startDate : new Date().toISOString().slice(0,10)),
-      progress: t.completed ? 100 : 0,
-      dependencies: ''
-    }))
-    if(!ref.current) return
-    ref.current.innerHTML = ''
-    const gantt = new Gantt(ref.current, tasks, {
-      on_click: task => { console.log('click', task) },
-      on_date_change: (task, start, end) => {
-        // persist date change
-        const all = loadData()
-        const t = all.tasks.find(x=>x.id===task.id)
-        if(t){
-          t.startDate = start
-          t.dueDate = end
-          t.updatedAt = new Date().toISOString()
-          updateTask(t)
-        }
-      },
-      on_view_change: (mode) => console.log('view', mode)
-    })
-    return ()=>{}
-  }, [])
+  const tasks = (project?.tasks || []).map(t => ({
+    id: t.id,
+    name: t.title,
+    start: t.start ? new Date(t.start) : new Date(),
+    end: t.end ? new Date(t.end) : dayjs().add(2, 'day').toDate(),
+    type: 'task',
+    progress: 0,
+    isDisabled: false,
+  }))
+
+  function onDateChange(task) {
+    if (!project) return
+    const newTasks = project.tasks.map(t => t.id === task.id ? { ...t, start: dayjs(task.start).format('YYYY-MM-DD'), end: dayjs(task.end).format('YYYY-MM-DD') } : t)
+    const updated = { ...project, tasks: newTasks, updatedAt: new Date().toISOString() }
+    saveState({ ...state, projects: state.projects.map(p => p.id === project.id ? updated : p) })
+  }
 
   return (
-    <Paper sx={{ p:2 }}>
-      <Typography variant="h6" gutterBottom>Timeline (Gantt)</Typography>
-      <div ref={ref} style={{ minHeight: 300 }} />
-      <Typography variant="body2" sx={{ mt:2 }}>Drag bars to change start/end dates — changes are saved to LocalStorage.</Typography>
-    </Paper>
+    <Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+        <TextField
+          select
+          label="Project"
+          value={projectId || ''}
+          onChange={e => setProjectId(e.target.value)}
+          size="small"
+          sx={{ minWidth: 240 }}
+        >
+          {state.projects.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
+          {state.projects.length === 0 && <MenuItem value="">No projects yet</MenuItem>}
+        </TextField>
+      </Box>
+      {project ? (
+        <Gantt
+          tasks={tasks}
+          viewMode={ViewMode.Day}
+          onDateChange={onDateChange}
+          listCellWidth="200px"
+        />
+      ) : (
+        <Typography variant="body1" color="text.secondary">Create a project and add tasks to use the timeline.</Typography>
+      )}
+    </Box>
   )
 }

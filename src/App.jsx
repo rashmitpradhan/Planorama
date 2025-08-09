@@ -1,35 +1,48 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
-import { AppBar, Toolbar, Typography, Button, Box, IconButton } from '@mui/material'
-import MenuIcon from '@mui/icons-material/Menu'
-import Boards from './pages/Boards'
-import Timeline from './pages/Timeline'
-import MyDay from './pages/MyDay'
-import Settings from './pages/Settings'
+import React, { useMemo, useState } from 'react'
+import { CssBaseline, AppBar, Toolbar, Typography, Container, BottomNavigation, BottomNavigationAction, Paper, IconButton } from '@mui/material'
+import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'
+import TimelineIcon from '@mui/icons-material/Timeline'
+import TodayIcon from '@mui/icons-material/Today'
+import SettingsIcon from '@mui/icons-material/Settings'
+import { Boards } from './pages/Boards.jsx'
+import { TimelinePage } from './pages/Timeline.jsx'
+import { MyDay } from './pages/MyDay.jsx'
+import { SettingsPage } from './pages/Settings.jsx'
+import { useStorage } from './utils/storage.js'
 
-export default function App(){
+export default function App() {
+  const { state, saveState } = useStorage()
+  const [tab, setTab] = useState(0)
+
+  const pages = useMemo(() => [
+    { label: 'Boards', icon: <DashboardCustomizeIcon />, element: <Boards state={state} saveState={saveState} /> },
+    { label: 'Timeline', icon: <TimelineIcon />, element: <TimelinePage state={state} saveState={saveState} /> },
+    { label: 'My Day', icon: <TodayIcon />, element: <MyDay state={state} saveState={saveState} /> },
+    { label: 'Settings', icon: <SettingsIcon />, element: <SettingsPage state={state} saveState={saveState} /> },
+  ], [state])
+
   return (
-    <BrowserRouter>
-      <AppBar position="static">
+    <>
+      <CssBaseline />
+      <AppBar position="sticky" color="primary" enableColorOnDark>
         <Toolbar>
-          <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr:2 }}>
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>Brand & Web PM</Typography>
-          <Button color="inherit" component={Link} to="/">Boards</Button>
-          <Button color="inherit" component={Link} to="/timeline">Timeline</Button>
-          <Button color="inherit" component={Link} to="/myday">My Day</Button>
-          <Button color="inherit" component={Link} to="/settings">Settings</Button>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>Planorama</Typography>
         </Toolbar>
       </AppBar>
-      <Box sx={{ p:2 }}>
-        <Routes>
-          <Route path="/" element={<Boards />} />
-          <Route path="/timeline" element={<Timeline />} />
-          <Route path="/myday" element={<MyDay />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
-      </Box>
-    </BrowserRouter>
+      <Container maxWidth="lg" sx={{ pb: 10, pt: 2 }}>
+        {pages[tab].element}
+      </Container>
+      <Paper elevation={3} sx={{ position: 'fixed', bottom: 0, left: 0, right: 0 }}>
+        <BottomNavigation
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          showLabels
+        >
+          {pages.map((p, idx) => (
+            <BottomNavigationAction key={idx} label={p.label} icon={p.icon} />
+          ))}
+        </BottomNavigation>
+      </Paper>
+    </>
   )
 }

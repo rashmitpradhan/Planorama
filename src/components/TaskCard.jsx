@@ -1,37 +1,41 @@
-import React from 'react'
-import { Paper, Typography, TextField, Box, IconButton } from '@mui/material'
+import React, { useState } from 'react'
+import { Card, CardContent, IconButton, TextField, Typography, Box } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
-import SaveIcon from '@mui/icons-material/Save'
-import CloseIcon from '@mui/icons-material/Close'
+import DeleteIcon from '@mui/icons-material/Delete'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
-export default function TaskCard({task, onUpdate}){
-  const [editing, setEditing] = React.useState(false)
-  const [title, setTitle] = React.useState(task.title)
+export default function TaskCard({ task, onTitleEdit, onDelete }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(task.title)
 
-  function save(){
-    onUpdate({...task, title})
-    setEditing(false)
-  }
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id, data: { column: task.status } })
+  const style = { transform: CSS.Transform.toString(transform), transition }
 
   return (
-    <Paper sx={{ p:1, mb:1 }}>
-      {!editing ? (
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <div>
-            <Typography variant="subtitle1">{task.title}</Typography>
-            <Typography variant="caption" color="text.secondary">{task.assignedTo || ''} {task.dueDate ? ' • '+task.dueDate : ''}</Typography>
-          </div>
-          <IconButton size="small" onClick={()=>setEditing(true)}><EditIcon fontSize="small" /></IconButton>
+    <Card ref={setNodeRef} style={style} variant="outlined" sx={{ mb: 1 }} {...attributes} {...listeners}>
+      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ flexGrow: 1 }} onDoubleClick={() => setEditing(true)}>
+          {editing ? (
+            <TextField
+              size="small"
+              value={draft}
+              autoFocus
+              onChange={e => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { onTitleEdit(task.id, draft); setEditing(false); }
+                if (e.key === 'Escape') { setDraft(task.title); setEditing(false); }
+              }}
+              onBlur={() => { onTitleEdit(task.id, draft); setEditing(false); }}
+            />
+          ) : (
+            <Typography variant="body1">{task.title}</Typography>
+          )}
+          {task.dueDate && <Typography variant="caption" color="text.secondary">Due {task.dueDate}</Typography>}
         </Box>
-      ) : (
-        <Box>
-          <TextField fullWidth size="small" value={title} onChange={e=>setTitle(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') save(); if(e.key==='Escape') setEditing(false)}} />
-          <Box sx={{ mt:1, display:'flex', gap:1 }}>
-            <IconButton onClick={save}><SaveIcon /></IconButton>
-            <IconButton onClick={()=>setEditing(false)}><CloseIcon /></IconButton>
-          </Box>
-        </Box>
-      )}
-    </Paper>
+        <IconButton size="small" onClick={() => setEditing(true)}><EditIcon fontSize="small" /></IconButton>
+        <IconButton size="small" color="error" onClick={() => onDelete(task.id)}><DeleteIcon fontSize="small" /></IconButton>
+      </CardContent>
+    </Card>
   )
 }

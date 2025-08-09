@@ -1,46 +1,67 @@
-import React from 'react'
-import { Typography, Paper, List, ListItem, ListItemText, Checkbox } from '@mui/material'
-import { loadData, saveData, updateTask } from '../utils/storage'
+import React, { useMemo, useState } from 'react'
+import { Box, Checkbox, List, ListItem, ListItemText, TextField, IconButton, Button, Typography } from '@mui/material'
+import AddIcon from '@mui/icons-material/Add'
+import dayjs from 'dayjs'
+import { v4 as uuidv4 } from 'uuid'
 
-export default function MyDay(){
-  const [data, setData] = React.useState(()=> loadData())
-  React.useEffect(()=> saveData(data), [data])
+export function MyDay({ state, saveState }) {
+  const today = dayjs().format('YYYY-MM-DD')
+  const tasksDueToday = useMemo(() => {
+    return state.projects.flatMap(p => p.tasks.filter(t => t.dueDate === today)).map(t => ({ ...t, projectId: state.projects.find(p => p.tasks.some(x => x.id === t.id))?.id }))
+  }, [state])
 
-  const today = new Date().toISOString().slice(0,10)
-  const auto = (data.tasks || []).filter(t => !t.completed && t.dueDate && t.dueDate.slice(0,10)===today)
-  const manual = (data.tasks || []).filter(t => !t.completed && t.myDay)
+  const [newTitle, setNewTitle] = useState('')
 
-  function toggleDone(id){
-    const all = loadData()
-    const t = all.tasks.find(x=>x.id===id)
-    if(t){ t.completed = !t.completed; t.updatedAt = new Date().toISOString(); updateTask(t); setData(loadData()) }
+  function toggleDone(itemId, listType) {
+    if (listType === 'myDayOnly') {
+      const list = state.myDayOnly.map(x => x.id === itemId ? { ...x, done: !x.done } : x)
+      saveState({ ...state, myDayOnly: list })
+    }
+  }
+
+  function addMyDay() {
+    if (!newTitle.trim()) return
+    const list = [...state.myDayOnly, { id: uuidv4(), title: newTitle.trim(), done: false }]
+    saveState({ ...state, myDayOnly: list })
+    setNewTitle('')
   }
 
   return (
-    <div>
-      <Typography variant="h5" gutterBottom>My Day — {new Date().toLocaleDateString()}</Typography>
-      <Typography variant="subtitle1">Due today</Typography>
-      <Paper sx={{ mb:2, p:1 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+      <Box>
+        <Typography variant="h6" sx={{ mb: 1 }}>Due Today</Typography>
         <List>
-          {auto.length===0 && <ListItem><ListItemText primary="No tasks due today" /></ListItem>}
-          {auto.map(t => (
-            <ListItem key={t.id} secondaryAction={<Checkbox checked={t.completed} onChange={()=>toggleDone(t.id)} />}>
-              <ListItemText primary={t.title} secondary={`${t.projectId} • ${t.dueDate}`} />
+          {tasksDueToday.length === 0 && <Typography color="text.secondary">No tasks due today.</Typography>}
+          {tasksDueToday.map(t => (
+            <ListItem key={t.id} dense>
+              <Checkbox disabled />
+              <ListItemText primary={t.title} secondary={t.dueDate} />
             </ListItem>
           ))}
         </List>
-      </Paper>
-      <Typography variant="subtitle1">Added to My Day</Typography>
-      <Paper sx={{ p:1 }}>
+      </Box>
+      <Box>
+        <Typography variant="h6" sx={{ mb: 1 }}>My Day</Typography>
+        <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+          <TextField
+            fullWidth
+            size="small"
+            label="Add a quick task"
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addMyDay()}
+          />
+          <IconButton color="primary" onClick={addMyDay}><AddIcon/></IconButton>
+        </Box>
         <List>
-          {manual.length===0 && <ListItem><ListItemText primary="No tasks in My Day" /></ListItem>}
-          {manual.map(t => (
-            <ListItem key={t.id} secondaryAction={<Checkbox checked={t.completed} onChange={()=>toggleDone(t.id)} />}>
-              <ListItemText primary={t.title} secondary={`${t.projectId} • ${t.dueDate || 'no date'}`} />
+          {state.myDayOnly.map(item => (
+            <ListItem key={item.id} dense>
+              <Checkbox checked={!!item.done} onChange={() => toggleDone(item.id, 'myDayOnly')} />
+              <ListItemText primary={item.title} />
             </ListItem>
           ))}
         </List>
-      </Paper>
-    </div>
+      </Box>
+    </Box>
   )
 }
