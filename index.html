@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Materia PM — Material Design Project Manager</title>
+  <link rel="icon" href="data:,">
+  <style>
+    /*
+      Materia PM — a single‑file, Material Design–inspired project manager
+      HTML + CSS + JS only; persistent via localStorage; no external libs.
+
+      Design: Material 3 (Material You) inspired tokens & components.
+    */
+
+    :root {
+      /* Material 3-esque color system (light) */
+      --md-primary: #6750a4;
+      --md-on-primary: #ffffff;
+      --md-primary-container: #eaddff;
+      --md-on-primary-container: #21005d;
+      --md-secondary: #625b71;
+      --md-on-secondary: #ffffff;
+      --md-surface: #fffbfe;
+      --md-on-surface: #1c1b1f;
+      --md-surface-variant: #e7e0ec;
+      --md-on-surface-variant: #49454f;
+      --md-outline: #79747e;
+      --md-bg: #f7f2fa;
+      --md-error: #b3261e;
+      --md-on-error: #ffffff;
+      --md-success: #2e7d32;
+
+      --elev-1: 0 1px 2px rgba(0,0,0,.14), 0 1px 3px rgba(0,0,0,.12);
+      --elev-2: 0 2px 4px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.12);
+      --elev-3: 0 4px 8px rgba(0,0,0,.14), 0 3px 10px rgba(0,0,0,.12);
+
+      --radius: 14px;
+      --radius-sm: 10px;
+      --radius-lg: 22px;
+
+      --transition: 180ms cubic-bezier(.2,.0,.2,1);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --md-primary: #d0bcff;
+        --md-on-primary: #381e72;
+        --md-primary-container: #4f378b;
+        --md-on-primary-container: #eaddff;
+        --md-secondary: #ccc2dc;
+        --md-on-secondary: #332d41;
+        --md-surface: #1c1b1f;
+        --md-on-surface: #e6e1e5;
+        --md-surface-variant: #49454f;
+        --md-on-surface-variant: #cac4d0;
+        --md-outline: #938f99;
+        --md-bg: #121212;
+        --md-error: #f2b8b5;
+        --md-on-error: #601410;
+        --md-success: #7ad08a;
+
+        --elev-1: 0 1px 2px rgba(0,0,0,.6), 0 1px 3px rgba(0,0,0,.42);
+        --elev-2: 0 2px 6px rgba(0,0,0,.6), 0 4px 10px rgba(0,0,0,.42);
+        --elev-3: 0 6px 18px rgba(0,0,0,.6), 0 8px 28px rgba(0,0,0,.42);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Noto Sans", Arial, sans-serif;
+      color: var(--md-on-surface);
+      background: linear-gradient(0deg, var(--md-bg), var(--md-surface) 40%);
+    }
+
+    /* Top App Bar */
+    .app-bar {
+      position: sticky; top: 0; z-index: 1000;
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px;
+      background: color-mix(in oklab, var(--md-surface) 90%, var(--md-primary) 10%);
+      border-bottom: 1px solid color-mix(in srgb, var(--md-outline) 40%, transparent);
+      backdrop-filter: saturate(1.2) blur(6px);
+    }
+    .app-bar .nav-btn, .icon-btn { 
+      border: none; background: transparent; padding: 10px; border-radius: 999px; cursor: pointer; 
+      position: relative; overflow: hidden; color: var(--md-on-surface);
+    }
+    .app-bar .title { font-weight: 700; letter-spacing: .2px; }
+    .app-bar .spacer { flex: 1; }
+    .search {
+      display: flex; align-items: center; gap: 8px;
+      min-width: 260px; max-width: 520px; flex: 1;
+      padding: 8px 12px; border-radius: 24px; box-shadow: var(--elev-1);
+      background: var(--md-surface);
+      border: 1px solid color-mix(in srgb, var(--md-outline) 30%, transparent);
+    }
+    .search input { width: 100%; border: none; outline: none; background: transparent; color: var(--md-on-surface); }
+
+    /* Layout */
+    .container { display: grid; grid-template-columns: 280px 1fr; gap: 16px; padding: 16px; }
+    @media (max-width: 960px) { .container { grid-template-columns: 1fr; } }
+
+    /* Nav Drawer */
+    .drawer {
+      background: var(--md-surface);
+      border: 1px solid color-mix(in srgb, var(--md-outline) 30%, transparent);
+      border-radius: var(--radius);
+      box-shadow: var(--elev-1);
+      padding: 8px;
+      position: sticky; top: 76px; height: max-content;
+    }
+    .section-title { font-size: 12px; letter-spacing: .6px; text-transform: uppercase; color: var(--md-on-surface-variant); padding: 8px 12px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: pointer; }
+    .nav-item.active, .nav-item:hover { background: color-mix(in oklab, var(--md-primary-container) 40%, transparent); }
+    .project-list { display: grid; gap: 2px; }
+    .pill { padding: 2px 8px; border-radius: 999px; background: var(--md-primary-container); color: var(--md-on-primary-container); font-size: 11px; }
+
+    /* Content Areas */
+    .surface-card {
+      background: var(--md-surface);
+      border: 1px solid color-mix(in srgb, var(--md-outline) 30%, transparent);
+      border-radius: var(--radius);
+      box-shadow: var(--elev-1);
+    }
+
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px; border-bottom: 1px solid color-mix(in srgb, var(--md-outline) 30%, transparent); }
+    .toolbar .chip { border: 1px solid var(--md-outline); border-radius: 999px; padding: 6px 10px; background: transparent; cursor: pointer; }
+    .toolbar .chip.active { background: var(--md-primary-container); color: var(--md-on-primary-container); border-color: transparent; }
+
+    /* Views */
+    .views { display: none; padding: 12px; }
+    .views.active { display: block; }
+
+    /* Board (Kanban) */
+    .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    @media (max-width: 1200px) { .board { grid-template-columns: repeat(2, 1fr);} }
+    @media (max-width: 680px) { .board { grid-template-columns: 1fr; } }
+    .column { display: flex; flex-direction: column; gap: 10px; padding: 10px; border-radius: var(--radius); background: color-mix(in oklab, var(--md-surface) 70%, var(--md-primary) 6%); min-height: 220px; }
+    .column-header { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+    .task { background: var(--md-surface); border: 1px solid color-mix(in srgb, var(--md-outline) 36%, transparent); border-radius: var(--radius-sm); padding: 10px; box-shadow: var(--elev-1); cursor: grab; display: grid; gap: 6px; }
+    .task.dragging { opacity: .6; }
+    .task-title { font-weight: 600; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .chip { font-size: 12px; padding: 4px 8px; border-radius: 999px; background: var(--md-surface-variant); color: var(--md-on-surface); }
+    .chip.priority-low { background: #e3f2fd; }
+    .chip.priority-medium { background: #fff3e0; }
+    .chip.priority-high { background: #ffebee; }
+    .chip.priority-urgent { background: #ffdde1; color: #5c0b0b; }
+
+    .btn { border: none; border-radius: 999px; padding: 10px 14px; background: var(--md-primary); color: var(--md-on-primary); cursor: pointer; box-shadow: var(--elev-1); transition: transform var(--transition), box-shadow var(--transition); }
+    .btn.tonal { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+    .btn.text { background: transparent; color: var(--md-primary); box-shadow: none; }
+    .btn:hover { transform: translateY(-1px); box-shadow: var(--elev-2); }
+
+    /* List */
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; border-bottom: 1px solid color-mix(in srgb, var(--md-outline) 30%, transparent); text-align: left; }
+    tr:hover { background: color-mix(in oklab, var(--md-primary-container) 30%, transparent); }
+
+    /* Dashboard */
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+    .card { padding: 16px; border-radius: var(--radius); background: var(--md-surface); border: 1px solid color-mix(in srgb, var(--md-outline) 30%, transparent); box-shadow: var(--elev-1); }
+    .span-4 { grid-column: span 4; } .span-6 { grid-column: span 6; } .span-12 { grid-column: span 12; }
+    @media (max-width: 900px) { .span-4, .span-6 { grid-column: span 12; } }
+
+    /* Dialogs (Material-like) */
+    dialog { border: none; border-radius: var(--radius-lg); max-width: 720px; width: min(92vw, 720px); padding: 0; background: var(--md-surface); color: var(--md-on-surface); box-shadow: var(--elev-3); }
+    dialog::backdrop { background: rgba(0,0,0,.3); backdrop-filter: blur(1px); }
+    .dialog-header { padding: 16px 20px; border-bottom: 1px solid color-mix(in srgb, var(--md-outline) 30%, transparent); font-weight: 700; }
+    .dialog-body { padding: 16px 20px; display: grid; gap: 12px; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid color-mix(in srgb, var(--md-outline) 30%, transparent); }
+
+    .field { display: grid; gap: 6px; }
+    .field label { font-size: 12px; color: var(--md-on-surface-variant); }
+    .field input, .field select, .field textarea { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--md-outline); background: transparent; color: inherit; outline-color: var(--md-primary); }
+    .row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 680px) { .row, .row-3 { grid-template-columns: 1fr; } }
+
+    /* Floating Action Button */
+    .fab { position: fixed; right: 24px; bottom: 24px; width: 56px; height: 56px; border-radius: 999px; display: grid; place-items: center; background: var(--md-primary); color: var(--md-on-primary); box-shadow: var(--elev-3); border: none; cursor: pointer; }
+
+    /* Snackbar */
+    .snackbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: -100px; opacity: 0; transition: all var(--transition); background: color-mix(in oklab, var(--md-on-surface) 94%, var(--md-surface) 6%); color: var(--md-surface); padding: 12px 16px; border-radius: 10px; box-shadow: var(--elev-2); }
+    .snackbar.show { bottom: 20px; opacity: 1; }
+
+    /* Helper */
+    .muted { color: var(--md-on-surface-variant); }
+    .nowrap { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <!-- Top App Bar -->
+  <header class="app-bar">
+    <button class="nav-btn" id="openDrawer" title="Menu" aria-label="Menu">☰</button>
+    <div class="title">Materia PM</div>
+    <div class="spacer"></div>
+    <div class="search">
+      <span>🔎</span>
+      <input id="searchInput" type="search" placeholder="Search tasks, projects, tags…" />
+    </div>
+    <button class="icon-btn" id="exportBtn" title="Export">⤓</button>
+    <button class="icon-btn" id="importBtn" title="Import">⤒</button>
+    <button class="icon-btn" id="themeBtn" title="Theme">🌓</button>
+  </header>
+
+  <div class="container">
+    <!-- Navigation Drawer -->
+    <aside class="drawer surface-card" id="drawer">
+      <div class="section-title">Overview</div>
+      <div class="project-list" id="navStatic">
+        <div class="nav-item" data-view="dashboard"><span>🏠</span> Dashboard</div>
+        <div class="nav-item" data-view="list"><span>📋</span> All Tasks</div>
+        <div class="nav-item" data-view="board"><span>🗂️</span> Board</div>
+      </div>
+      <div class="section-title">Projects <span class="pill" id="projectCount">0</span></div>
+      <div class="project-list" id="projectList"></div>
+      <div style="padding:8px 12px;">
+        <button class="btn tonal" id="addProjectBtn">➕ New Project</button>
+      </div>
+      <div class="section-title">Filters</div>
+      <div style="padding: 0 8px 8px 8px; display:grid; gap:8px;">
+        <select id="filterPriority">
+          <option value="">Priority: Any</option>
+          <option>Low</option><option>Medium</option><option>High</option><option>Urgent</option>
+        </select>
+        <input id="filterAssignee" placeholder="Assignee contains…" />
+        <input id="filterTag" placeholder="Tag contains…" />
+        <button id="clearFilters" class="btn text">Clear Filters</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="surface-card" id="main">
+      <div class="toolbar">
+        <button class="chip active" data-viewtab="dashboard">Dashboard</button>
+        <button class="chip" data-viewtab="board">Board</button>
+        <button class="chip" data-viewtab="list">List</button>
+        <div class="spacer"></div>
+        <button class="btn" id="addTaskBtn">Add Task</button>
+      </div>
+
+      <!-- Dashboard View -->
+      <section class="views active" id="view-dashboard">
+        <div class="grid">
+          <div class="card span-4">
+            <div class="muted">Open Tasks</div>
+            <div style="font-size:34px; font-weight:800;" id="statOpen">0</div>
+          </div>
+          <div class="card span-4">
+            <div class="muted">Overdue</div>
+            <div style="font-size:34px; font-weight:800; color: var(--md-error);" id="statOverdue">0</div>
+          </div>
+          <div class="card span-4">
+            <div class="muted">Done this week</div>
+            <div style="font-size:34px; font-weight:800; color: var(--md-success);" id="statDone">0</div>
+          </div>
+          <div class="card span-12">
+            <div class="muted" style="margin-bottom:6px;">By Priority</div>
+            <div id="priorityBreakdown" style="display:flex; gap:8px; align-items:center;"></div>
+          </div>
+          <div class="card span-12">
+            <div class="muted" style="margin-bottom:6px;">Upcoming (next 7 days)</div>
+            <div id="upcomingList" style="display:grid; gap:8px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Board View -->
+      <section class="views" id="view-board">
+        <div class="board">
+          <div class="column" data-status="backlog">
+            <div class="column-header">Backlog <span class="pill" id="count-backlog">0</span></div>
+            <div class="dropzone" id="col-backlog"></div>
+          </div>
+          <div class="column" data-status="inprogress">
+            <div class="column-header">In Progress <span class="pill" id="count-inprogress">0</span></div>
+            <div class="dropzone" id="col-inprogress"></div>
+          </div>
+          <div class="column" data-status="review">
+            <div class="column-header">Review <span class="pill" id="count-review">0</span></div>
+            <div class="dropzone" id="col-review"></div>
+          </div>
+          <div class="column" data-status="done">
+            <div class="column-header">Done <span class="pill" id="count-done">0</span></div>
+            <div class="dropzone" id="col-done"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- List View -->
+      <section class="views" id="view-list">
+        <table>
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Project</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Assignee</th>
+              <th>Due</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="listBody"></tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <!-- Floating Action Button -->
+  <button class="fab" id="fab" title="Add Task">＋</button>
+
+  <!-- Dialogs -->
+  <dialog id="projectDialog">
+    <form method="dialog">
+      <div class="dialog-header">New Project</div>
+      <div class="dialog-body">
+        <div class="field"><label for="projectName">Name</label><input id="projectName" required placeholder="e.g., Website Redesign" /></div>
+        <div class="field"><label for="projectDesc">Description</label><textarea id="projectDesc" rows="3" placeholder="Short description"></textarea></div>
+        <div class="row">
+          <div class="field"><label for="projectColor">Color</label><input id="projectColor" type="color" value="#6750a4" /></div>
+          <div class="field"><label for="projectOwner">Owner</label><input id="projectOwner" placeholder="Person or team" /></div>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn text" value="cancel">Cancel</button>
+        <button class="btn" value="ok" id="saveProjectBtn">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="taskDialog">
+    <form method="dialog">
+      <div class="dialog-header" id="taskDialogTitle">New Task</div>
+      <div class="dialog-body">
+        <div class="field"><label for="taskTitle">Title</label><input id="taskTitle" required placeholder="e.g., Set up authentication" /></div>
+        <div class="field"><label for="taskDesc">Description</label><textarea id="taskDesc" rows="3" placeholder="Optional details"></textarea></div>
+        <div class="row-3">
+          <div class="field"><label for="taskProject">Project</label><select id="taskProject"></select></div>
+          <div class="field"><label for="taskPriority">Priority</label>
+            <select id="taskPriority">
+              <option>Low</option><option>Medium</option><option>High</option><option>Urgent</option>
+            </select>
+          </div>
+          <div class="field"><label for="taskStatus">Status</label>
+            <select id="taskStatus">
+              <option value="backlog">Backlog</option>
+              <option value="inprogress">In Progress</option>
+              <option value="review">Review</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="taskAssignee">Assignee</label><input id="taskAssignee" placeholder="Who is responsible?" /></div>
+          <div class="field"><label for="taskDue">Due date</label><input id="taskDue" type="date" /></div>
+        </div>
+        <div class="field"><label for="taskTags">Tags (comma separated)</label><input id="taskTags" placeholder="frontend, api, blocked" /></div>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn text" value="cancel">Cancel</button>
+        <div style="flex:1"></div>
+        <button class="btn tonal" id="deleteTaskBtn" type="button" style="display:none;">Delete</button>
+        <button class="btn" value="ok" id="saveTaskBtn">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirmDialog">
+    <form method="dialog">
+      <div class="dialog-header" id="confirmTitle">Confirm</div>
+      <div class="dialog-body" id="confirmBody">Are you sure?</div>
+      <div class="dialog-actions">
+        <button class="btn text" value="cancel">Cancel</button>
+        <button class="btn" value="ok">OK</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="importDialog">
+    <form method="dialog">
+      <div class="dialog-header">Import JSON</div>
+      <div class="dialog-body">
+        <div class="field"><label for="importInput">Paste data</label><textarea id="importInput" rows="10" placeholder='{"projects":[],"tasks":[]}'></textarea></div>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn text" value="cancel">Cancel</button>
+        <button class="btn" value="ok" id="confirmImportBtn">Import</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="snackbar" id="snackbar">Saved</div>
+
+  <script>
+    // --- Simple store (localStorage) ---
+    const Store = {
+      key: 'materia-pm:v1',
+      data: { projects: [], tasks: [], settings: { theme: 'auto' } },
+      load() {
+        try {
+          const raw = localStorage.getItem(this.key);
+          if (raw) this.data = JSON.parse(raw);
+        } catch (e) { console.warn('Failed to load store', e); }
+      },
+      save() {
+        localStorage.setItem(this.key, JSON.stringify(this.data));
+      },
+      nextId(prefix) { return prefix + '_' + Math.random().toString(36).slice(2,9); }
+    };
+
+    // --- Utilities ---
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString() : '';
+    const todayISO = () => new Date().toISOString().slice(0,10);
+
+    function toast(msg) {
+      const el = $('#snackbar');
+      el.textContent = msg; el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2000);
+    }
+
+    function ensureDefaults() {
+      if (Store.data.projects.length === 0) {
+        const p1 = { id: Store.nextId('prj'), name: 'Demo Project', desc: 'Sample project to get you started', color: '#6750a4', owner: 'You', createdAt: Date.now() };
+        Store.data.projects.push(p1);
+        const t1 = { id: Store.nextId('tsk'), title: 'Create wireframes', desc: '', projectId: p1.id, priority: 'Medium', status: 'backlog', assignee: 'Alex', due: todayISO(), tags: ['ux'], createdAt: Date.now(), updatedAt: Date.now() };
+        const t2 = { id: Store.nextId('tsk'), title: 'Build login API', desc: '', projectId: p1.id, priority: 'High', status: 'inprogress', assignee: 'Priya', due: '', tags: ['backend'], createdAt: Date.now(), updatedAt: Date.now() };
+        const t3 = { id: Store.nextId('tsk'), title: 'QA smoke tests', desc: '', projectId: p1.id, priority: 'Low', status: 'review', assignee: 'Sam', due: '', tags: ['qa'], createdAt: Date.now(), updatedAt: Date.now() };
+        const t4 = { id: Store.nextId('tsk'), title: 'Deploy v1', desc: '', projectId: p1.id, priority: 'Urgent', status: 'done', assignee: 'You', due: todayISO(), tags: ['release'], createdAt: Date.now(), updatedAt: Date.now() };
+        Store.data.tasks.push(t1, t2, t3, t4);
+      }
+    }
+
+    // --- Rendering ---
+    function renderProjects() {
+      const list = $('#projectList'); list.innerHTML = '';
+      const { projects } = Store.data;
+      $('#projectCount').textContent = projects.length;
+      projects.forEach(p => {
+        const item = document.createElement('div');
+        item.className = 'nav-item'; item.dataset.projectId = p.id;
+        item.innerHTML = `<span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${p.color};"></span><span>${p.name}</span>`;
+        item.onclick = () => { UI.currentProject = p.id; switchView('board'); highlightProject(p.id); renderAll(); };
+        list.appendChild(item);
+      });
+      highlightProject(UI.currentProject);
+      refreshTaskProjectOptions();
+    }
+
+    function highlightProject(projectId) {
+      $$('#projectList .nav-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.projectId === projectId);
+      });
+    }
+
+    function refreshTaskProjectOptions() {
+      const sel = $('#taskProject'); sel.innerHTML = '';
+      Store.data.projects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id; opt.textContent = p.name; sel.appendChild(opt);
+      });
+      if (UI.currentProject) sel.value = UI.currentProject;
+    }
+
+    function filteredTasks() {
+      const q = $('#searchInput').value.trim().toLowerCase();
+      const pr = $('#filterPriority').value;
+      const asg = $('#filterAssignee').value.trim().toLowerCase();
+      const tag = $('#filterTag').value.trim().toLowerCase();
+      return Store.data.tasks.filter(t => {
+        if (UI.currentProject && t.projectId !== UI.currentProject) return false;
+        if (pr && t.priority !== pr) return false;
+        if (asg && !(t.assignee || '').toLowerCase().includes(asg)) return false;
+        if (tag && !(t.tags||[]).join(',').toLowerCase().includes(tag)) return false;
+        if (!q) return true;
+        const hay = [t.title, t.desc, t.assignee, (Store.data.projects.find(p=>p.id===t.projectId)||{}).name, (t.tags||[]).join(',')].join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
+    function renderBoard() {
+      ['backlog','inprogress','review','done'].forEach(st => {
+        const mount = $('#col-' + st); mount.innerHTML = '';
+        const tasks = filteredTasks().filter(t=>t.status===st);
+        $('#count-' + st).textContent = tasks.length;
+        tasks.forEach(t => mount.appendChild(renderTaskCard(t)));
+      });
+      enableDnD();
+    }
+
+    function renderTaskCard(t) {
+      const el = document.createElement('div'); el.className='task'; el.draggable=true; el.dataset.id=t.id;
+      const project = Store.data.projects.find(p=>p.id===t.projectId);
+      const tags = (t.tags||[]).map(s=>`<span class="chip">#${s}</span>`).join('');
+      el.innerHTML = `
+        <div class="task-title">${escapeHtml(t.title)}</div>
+        <div class="muted">${project ? project.name : ''}</div>
+        <div class="meta">
+          <span class="chip priority-${t.priority.toLowerCase()}">${t.priority}</span>
+          ${t.assignee ? `<span class="chip">👤 ${escapeHtml(t.assignee)}</span>`:''}
+          ${t.due ? `<span class="chip ${isOverdue(t.due) && t.status!=='done' ? 'priority-urgent' : ''}">📅 ${fmtDate(t.due)}</span>`:''}
+          ${tags}
+        </div>
+      `;
+      el.addEventListener('dblclick', () => openTaskDialog(t.id));
+      return el;
+    }
+
+    function renderList() {
+      const tbody = $('#listBody'); tbody.innerHTML = '';
+      filteredTasks().forEach(t => {
+        const tr = document.createElement('tr');
+        const project = Store.data.projects.find(p=>p.id===t.projectId);
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(t.title)}</strong><div class="muted">${escapeHtml(t.desc||'')}</div></td>
+          <td>${project ? project.name : ''}</td>
+          <td>${t.priority}</td>
+          <td class="nowrap">${prettyStatus(t.status)}</td>
+          <td>${escapeHtml(t.assignee||'')}</td>
+          <td class="nowrap">${t.due?fmtDate(t.due):''}</td>
+          <td class="nowrap"><button class="btn text" data-edit="${t.id}">Edit</button></td>
+        `;
+        tr.querySelector('[data-edit]')?.addEventListener('click', () => openTaskDialog(t.id));
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderDashboard() {
+      const tasks = filteredTasks();
+      const open = tasks.filter(t=>t.status!=='done').length;
+      $('#statOpen').textContent = open;
+      const today = new Date(); today.setHours(0,0,0,0);
+      const overdue = tasks.filter(t => t.due && new Date(t.due) < today && t.status !== 'done').length;
+      $('#statOverdue').textContent = overdue;
+      // Done this week
+      const now = new Date(); const weekAgo = new Date(now); weekAgo.setDate(now.getDate()-7);
+      const done = tasks.filter(t=> t.status==='done' && t.updatedAt && t.updatedAt >= weekAgo.getTime()).length;
+      $('#statDone').textContent = done;
+      // Priority breakdown
+      const prios = ['Urgent','High','Medium','Low'];
+      const holder = $('#priorityBreakdown'); holder.innerHTML = '';
+      prios.forEach(p => {
+        const count = tasks.filter(t=>t.priority===p).length;
+        const chip = document.createElement('div'); chip.className = 'chip priority-' + p.toLowerCase();
+        chip.textContent = `${p}: ${count}`; holder.appendChild(chip);
+      });
+      // Upcoming
+      const in7 = new Date(now); in7.setDate(now.getDate()+7);
+      const upcoming = tasks.filter(t=> t.due && new Date(t.due) >= today && new Date(t.due) <= in7 && t.status!=='done')
+        .sort((a,b)=> new Date(a.due)-new Date(b.due));
+      const up = $('#upcomingList'); up.innerHTML = '';
+      upcoming.forEach(t => {
+        const row = document.createElement('div');
+        const project = Store.data.projects.find(p=>p.id===t.projectId);
+        row.innerHTML = `<strong>${fmtDate(t.due)}</strong> — ${escapeHtml(t.title)} <span class="muted">(${project?.name||''})</span>`;
+        up.appendChild(row);
+      });
+    }
+
+    function renderAll() {
+      renderProjects();
+      renderBoard();
+      renderList();
+      renderDashboard();
+      persistAndMaybeAnnounce();
+    }
+
+    function persistAndMaybeAnnounce(skipToast = true) {
+      Store.save();
+      if (!skipToast) toast('Saved');
+    }
+
+    // --- Drag & Drop ---
+    function enableDnD() {
+      $$('.task').forEach(t => {
+        t.addEventListener('dragstart', e => { t.classList.add('dragging'); e.dataTransfer.setData('text/plain', t.dataset.id); });
+        t.addEventListener('dragend', () => t.classList.remove('dragging'));
+      });
+      $$('.dropzone').forEach(zone => {
+        zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.outline = '2px dashed var(--md-primary)'; zone.style.borderRadius = '10px'; });
+        zone.addEventListener('dragleave', () => { zone.style.outline = 'none'; });
+        zone.addEventListener('drop', e => {
+          e.preventDefault(); zone.style.outline = 'none';
+          const id = e.dataTransfer.getData('text/plain');
+          const task = Store.data.tasks.find(x=>x.id===id);
+          if (task) { task.status = zone.parentElement.dataset.status; task.updatedAt = Date.now(); renderAll(); }
+        });
+      });
+    }
+
+    // --- Dialog flows ---
+    function openProjectDialog() {
+      $('#projectName').value = '';
+      $('#projectDesc').value = '';
+      $('#projectOwner').value = '';
+      $('#projectColor').value = '#6750a4';
+      $('#projectDialog').showModal();
+    }
+
+    function saveProject() {
+      const p = {
+        id: Store.nextId('prj'),
+        name: $('#projectName').value.trim(),
+        desc: $('#projectDesc').value.trim(),
+        owner: $('#projectOwner').value.trim(),
+        color: $('#projectColor').value,
+        createdAt: Date.now()
+      };
+      if (!p.name) return;
+      Store.data.projects.push(p);
+      UI.currentProject = p.id;
+      renderAll();
+      toast('Project added');
+    }
+
+    let editingTaskId = null;
+    function openTaskDialog(id = null) {
+      editingTaskId = id;
+      const dlg = $('#taskDialog');
+      refreshTaskProjectOptions();
+      if (id) {
+        const t = Store.data.tasks.find(x=>x.id===id);
+        $('#taskDialogTitle').textContent = 'Edit Task';
+        $('#taskTitle').value = t.title;
+        $('#taskDesc').value = t.desc||'';
+        $('#taskProject').value = t.projectId;
+        $('#taskPriority').value = t.priority;
+        $('#taskStatus').value = t.status;
+        $('#taskAssignee').value = t.assignee||'';
+        $('#taskDue').value = t.due||'';
+        $('#taskTags').value = (t.tags||[]).join(', ');
+        $('#deleteTaskBtn').style.display = 'inline-flex';
+      } else {
+        $('#taskDialogTitle').textContent = 'New Task';
+        $('#taskTitle').value = '';
+        $('#taskDesc').value = '';
+        $('#taskProject').value = UI.currentProject || (Store.data.projects[0]?.id || '');
+        $('#taskPriority').value = 'Medium';
+        $('#taskStatus').value = 'backlog';
+        $('#taskAssignee').value = '';
+        $('#taskDue').value = '';
+        $('#taskTags').value = '';
+        $('#deleteTaskBtn').style.display = 'none';
+      }
+      dlg.showModal();
+    }
+
+    function saveTask() {
+      const t = {
+        title: $('#taskTitle').value.trim(),
+        desc: $('#taskDesc').value.trim(),
+        projectId: $('#taskProject').value,
+        priority: $('#taskPriority').value,
+        status: $('#taskStatus').value,
+        assignee: $('#taskAssignee').value.trim(),
+        due: $('#taskDue').value,
+        tags: ($('#taskTags').value||'').split(',').map(s=>s.trim()).filter(Boolean)
+      };
+      if (!t.title) return;
+      if (editingTaskId) {
+        const existing = Store.data.tasks.find(x=>x.id===editingTaskId);
+        Object.assign(existing, t, { updatedAt: Date.now() });
+        toast('Task updated');
+      } else {
+        Store.data.tasks.push({ id: Store.nextId('tsk'), ...t, createdAt: Date.now(), updatedAt: Date.now() });
+        toast('Task added');
+      }
+      renderAll();
+    }
+
+    function deleteTask() {
+      if (!editingTaskId) return;
+      const idx = Store.data.tasks.findIndex(x=>x.id===editingTaskId);
+      if (idx >= 0) { Store.data.tasks.splice(idx,1); }
+      renderAll(); toast('Task deleted');
+    }
+
+    function isOverdue(iso) {
+      const d = new Date(iso); const today = new Date(); today.setHours(0,0,0,0); return d < today;
+    }
+
+    function prettyStatus(s) {
+      return { backlog: 'Backlog', inprogress: 'In Progress', review: 'Review', done: 'Done' }[s] || s;
+    }
+
+    function escapeHtml(str) {
+      return (str||'').replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[s]));
+    }
+
+    // --- Export / Import ---
+    function exportData() {
+      const data = JSON.stringify(Store.data, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'materia-pm-data.json'; a.click(); URL.revokeObjectURL(url);
+    }
+
+    function importData(raw) {
+      try {
+        const data = JSON.parse(raw);
+        if (!data.projects || !data.tasks) throw new Error('Invalid data');
+        Store.data = data; UI.currentProject = null; renderAll(); toast('Imported');
+      } catch (e) { alert('Failed to import: ' + e.message); }
+    }
+
+    // --- Theme toggle ---
+    function toggleTheme() {
+      const s = Store.data.settings; s.theme = s.theme === 'dark' ? 'light' : s.theme === 'light' ? 'auto' : 'dark';
+      document.documentElement.dataset.theme = s.theme;
+      toast('Theme: ' + s.theme);
+      Store.save();
+    }
+
+    // --- View switch ---
+    function switchView(view) {
+      $$('.views').forEach(v => v.classList.remove('active'));
+      $('#view-' + view).classList.add('active');
+      $$('.toolbar .chip').forEach(c => c.classList.toggle('active', c.dataset.viewtab === view));
+    }
+
+    const UI = { currentProject: null };
+
+    // --- Event bindings ---
+    function bindEvents() {
+      // Side nav static
+      $$('#navStatic .nav-item').forEach(item => item.addEventListener('click', () => { UI.currentProject = null; highlightProject(null); switchView(item.dataset.view); renderAll(); }));
+
+      // Toolbar tabs
+      $$('.toolbar [data-viewtab]').forEach(b => b.addEventListener('click', () => { switchView(b.dataset.viewtab); }));
+
+      // Fab & toolbar add
+      $('#fab').onclick = () => openTaskDialog();
+      $('#addTaskBtn').onclick = () => openTaskDialog();
+      $('#addProjectBtn').onclick = openProjectDialog;
+
+      // Search & filters
+      $('#searchInput').addEventListener('input', () => { renderBoard(); renderList(); renderDashboard(); });
+      $('#filterPriority').addEventListener('change', () => { renderBoard(); renderList(); renderDashboard(); });
+      $('#filterAssignee').addEventListener('input', () => { renderBoard(); renderList(); renderDashboard(); });
+      $('#filterTag').addEventListener('input', () => { renderBoard(); renderList(); renderDashboard(); });
+      $('#clearFilters').onclick = () => { ['filterPriority','filterAssignee','filterTag','searchInput'].forEach(id => { const el = document.getElementById(id); el.value='';}); renderAll(); };
+
+      // Dialog actions
+      $('#saveProjectBtn').onclick = (e) => { e.preventDefault(); saveProject(); $('#projectDialog').close(); };
+      $('#saveTaskBtn').onclick = (e) => { e.preventDefault(); saveTask(); $('#taskDialog').close(); };
+      $('#deleteTaskBtn').onclick = async () => {
+        const ok = await confirmDialog('Delete Task', 'This action cannot be undone.');
+        if (ok) { deleteTask(); $('#taskDialog').close(); }
+      };
+
+      // Export / Import / Theme
+      $('#exportBtn').onclick = exportData;
+      $('#importBtn').onclick = () => { $('#importInput').value=''; $('#importDialog').showModal(); };
+      $('#confirmImportBtn').onclick = (e) => { e.preventDefault(); importData($('#importInput').value); $('#importDialog').close(); };
+      $('#themeBtn').onclick = toggleTheme;
+
+      // Drawer open/close (on small screens, the drawer is simply sticky so we do minimal toggling)
+      $('#openDrawer').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function confirmDialog(title, body) { return new Promise(res => { $('#confirmTitle').textContent = title; $('#confirmBody').textContent = body; const dlg = $('#confirmDialog'); dlg.showModal(); dlg.addEventListener('close', () => res(dlg.returnValue === 'ok'), { once: true }); }); }
+
+    // --- Boot ---
+    Store.load(); ensureDefaults();
+    document.addEventListener('DOMContentLoaded', () => { bindEvents(); renderAll(); });
+  </script>
+</body>
+</html>
